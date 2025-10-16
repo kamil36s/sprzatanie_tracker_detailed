@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Cleaning Dashboard</title>
+
+    <style>
+        /* =========================
+       DESIGN TOKENS (CSS Vars)
+       ========================= */
+        :root {
+            --bg: #0a0a0a;
+            --panel: #111;
+            --card: #161616;
+            --border: #2d2d2d;
+            --text: #f3f3f3;
+            --muted: #a1a1a1;
+            --bar: #2a2a2a;
+            --barFill: #fff;
+
+            /* Status-colors */
+            --fresh: #22c55e;
+            /* FRESH  */
+            --coming: #a3e635;
+            /* COMING */
+            --due: #fbbf24;
+            /* DUE    */
+            --over: #ef4444;
+            /* OVERDUE */
+            --dead: #430069;
+            /* DEAD (7+ dni po terminie) */
+
+            /* legacy */
+            --rose: #ef4444;
+            --ok: #22c55e;
+        }
+
+        /* ===============
+       BASE & LAYOUT
+       =============== */
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif
+        }
+
+        .wrap {
+            max-width: 1600px;
+            margin: auto;
+            padding: 18px;
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 18px
+        }
+
+        .panel,
+        .main {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 18px
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: 22px
+        }
+
+        h2 {
+            margin: 0 0 10px;
+            font-size: 16px;
+            color: var(--muted);
+            font-weight: 600
+        }
+
+        .kpis {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 16px
+        }
+
+        .kpi {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px
+        }
+
+        .kpi b {
+            display: block;
+            font-size: 28px
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap
+        }
+
+        select,
+        button {
+            background: #0f0f0f;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 8px 10px
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px
+        }
+
+        @media (max-width:1300px) {
+            .grid {
+                grid-template-columns: repeat(2, 1fr)
+            }
+
+            .wrap {
+                grid-template-columns: 320px 1fr
+            }
+        }
+
+        @media (max-width:900px) {
+            .grid {
+                grid-template-columns: 1fr
+            }
+
+            .wrap {
+                grid-template-columns: 1fr
+            }
+        }
+
+        /* ==========
+       CARD
+       ========== */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px;
+            position: relative;
+            overflow: hidden
+        }
+
+        /* Ramki wg statusu (delikatny mix koloru ze standardową ramką) */
+        .card.overdue {
+            border-color: color-mix(in oklab, var(--over) 50%, var(--border))
+        }
+
+        .card.due {
+            border-color: color-mix(in oklab, var(--due) 50%, var(--border))
+        }
+
+        .card.coming {
+            border-color: color-mix(in oklab, var(--coming) 50%, var(--border))
+        }
+
+        .card.dead {
+            border-color: color-mix(in oklab, var(--dead) 50%, var(--border))
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px
+        }
+
+        /* Tytuł: 2 kolumny (ikona + tekst), żeby długie tytuły nie wjeżdżały pod ikonę */
+        .title {
+            display: grid;
+            grid-template-columns: 22px 1fr;
+            column-gap: 8px;
+            align-items: start;
+            font-weight: 700
+        }
+
+        .title .ico {
+            width: 18px;
+            height: 18px;
+            opacity: .9
+        }
+
+        .meta {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 4px
+        }
+
+        .badges {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-left: auto
+        }
+
+        /* ==========
+       PILLS
+       ========== */
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 22px;
+            min-width: 58px;
+            padding: 0 10px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            font-size: 11px;
+            letter-spacing: .2px
+        }
+
+        .pill-over {
+            background: var(--over);
+            color: #fff
+        }
+
+        .pill-due {
+            background: var(--due);
+            color: #1a1a1a
+        }
+
+        .pill-dead {
+            background: var(--dead);
+            color: #fff
+        }
+
+        .pill-coming {
+            background: var(--coming);
+            color: #0c0c0c
+        }
+
+        .pill-fresh {
+            background: var(--fresh);
+            color: #0c0c0c
+        }
+
+        
+
+        /* ===============
+       PROGRESS BAR
+       =============== */
+        .progress {
+            height: 10px;
+            background: var(--bar);
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 10px 0 4px
+        }
+
+        .progress>div {
+            height: 100%;
+            background: var(--barFill);
+            width: 0%;
+            transition: width .25s ease, background-color .25s ease
+        }
+
+        .progress .green {
+            background: var(--fresh)
+        }
+
+        .progress .lime {
+            background: var(--coming)
+        }
+
+        .progress .yellow {
+            background: var(--due)
+        }
+
+        .progress .red {
+            background: var(--over)
+        }
+
+        .progress .dead {
+            background: var(--dead)
+        }
+
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--muted);
+            font-size: 12px
+        }
+
+        /* ===============
+       CARD ANIMATIONS
+       =============== */
+        .card {
+            transition: transform .25s ease, opacity .25s ease, border-color .25s ease
+        }
+
+        .card.enter {
+            opacity: 0;
+            transform: translateY(8px) scale(.98)
+        }
+
+        .card.enter.show {
+            opacity: 1;
+            transform: none
+        }
+
+        .card.exit {
+            opacity: 0;
+            transform: translateY(-8px) scale(.98)
+        }
+
+        @keyframes flash {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, .0)
+            }
+
+            50% {
+                box-shadow: 0 0 0 2px rgba(255, 255, 255, .10) inset
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, .0)
+            }
+        }
+
+        .card.update {
+            animation: flash .5s ease
+        }
+
+        .pill { border: 0; cursor: pointer; }
+        
+        .pill:focus { outline: none; }
+
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <!-- =========================
+         LEWY PANEL (KPI + FILTRY)
+         ========================= -->
+        <aside class="panel">
+            <h1>Cleaning Dashboard</h1>
+
+            <!-- KPI -->
+            <div class="kpis">
+                <div class="kpi"><span>Due today</span><b id="kpi-today">0</b></div>
+                <div class="kpi"><span>Overdue</span><b id="kpi-overdue">0</b></div>
+                <div class="kpi"><span>Total</span><b id="kpi-total">0</b></div>
+                <div class="kpi"><span>Avg delay</span><b id="kpi-delay">0d</b></div>
+            </div>
+
+            <!-- Filtry -->
+            <h2>Filters</h2>
+            <div class="controls">
+                <select id="room">
+                    <option value="ALL">All rooms</option>
+                </select>
+
+                <select id="category">
+                    <option value="ALL">All categories</option>
+                </select>
+
+                <select id="sort">
+                    <option value="priority">Priority</option>
+                    <option value="soonest">Soonest due</option>
+                    <option value="room">Room</option>
+                </select>
+
+                <label style="display:flex;align-items:center;gap:6px">
+                    <input type="checkbox" id="dueOnly"> Due only
+                </label>
+
+                <button id="refresh">Refresh</button>
+            </div>
+        </aside>
+
+        <!-- ===================
+         PRAWA KOLUMNA (LISTA)
+         =================== -->
+        <main class="main">
+            <h2>Tasks</h2>
+            <div id="grid" class="grid"></div>
+        </main>
+    </div>
+
+    <script>
+        /* ==========================================
+           KONFIG / STAŁE
+           ========================================== */
+        const API = 'https://script.google.com/macros/s/AKfycbwZXHkLhl9HlcTHHzJjcMzAzDMRYhboDs3_kR8oAq9SdeKgBOp9JbWFS6P2OaiczpmXkg/exec';
+        const WRITE_TOKEN = ''; // albo ten sam sekret co w Apps Script
+        const fmtDate = d => d
+                ? new Date(d).toLocaleDateString('pl-PL', { day: '2-digit', month: 'short', year: 'numeric' })
+                : '—';
+        const bust = url => url + (url.includes('?') ? '&' : '?') + '_=' + Date.now(); // anty-cache dla fetch
+        console.log('[BOOT] start');
+                    fetch(bust(`${API}?debug=1`))
+                        .then(r => r.text())
+                        .then(t => console.log('[BOOT] API debug payload:', t))
+                        .catch(e => console.error('[BOOT] API debug ERR:', e));
+
+        /* ==========================================
+           IKONY (mapa nazwa kategorii -> SVG)
+           ========================================== */
+        const CATEGORY_ICON = {
+            'Przetarcie kurzu': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 20h18M5 16h14l-1.5-7.5A3 3 0 0 0 14.6 6H9.4a3 3 0 0 0-2.9 2.5L5 16Z"/><path d="M10 6V4a2 2 0 0 1 4 0v2"/></svg>',
+            'Przetarcie': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 7V5m10 2V5"/></svg>',
+            'Umywalka': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 12h12"/><path d="M7 12a5 5 0 0 0 10 0"/><path d="M12 6v3"/><path d="M10 6h4"/></svg>',
+            'Zlew': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="8" width="18" height="8" rx="2"/><path d="M12 8V5h3"/></svg>',
+            'Lustro': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7l6 6M9 11l2 2"/></svg>',
+            'Odkurzanie': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 15h7a3 3 0 0 1 3 3v1H6z"/><path d="M10 15V6a3 3 0 0 1 6 0v4"/><circle cx="8" cy="19" r="1.6"/><circle cx="16" cy="19" r="1.6"/></svg>',
+            'Mycie mopem': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12"/><path d="M5 19h14l-2 2H7z"/></svg>',
+            'Prysznic': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4a5 5 0 0 1 5 5v1H7V9a5 5 0 0 1 5-5Z"/><path d="M7 14h10"/><path d="M8 16v2M12 16v2M16 16v2"/></svg>',
+            'Kibel': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10v4H7z"/><path d="M6 8h12l-1 5a6 6 0 0 1-10 0z"/></svg>',
+            'Pralka': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="13" r="4"/><circle cx="8" cy="6" r="1"/><circle cx="12" cy="6" r="1"/></svg>',
+            'Okno': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M12 4v16M4 12h16"/></svg>',
+            'Łóżko': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h18v6H3z"/><path d="M3 12V9a2 2 0 0 1 2-2h6v5"/></svg>',
+            'Śmieci': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V5h6v2"/></svg>',
+            'Organizacja': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="4" rx="1"/><rect x="4" y="10" width="16" height="4" rx="1"/><rect x="4" y="15" width="16" height="4" rx="1"/></svg>',
+            'Inne': '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>'
+        };
+        function iconFor(cat) {
+            const k = Object.keys(CATEGORY_ICON);
+            const hit = k.find(x => (cat || '').toLowerCase().includes(x.toLowerCase()));
+            return CATEGORY_ICON[hit || 'Inne'];
+        }
+
+    async function markDone(row) {
+            console.log('[DONE] called with row:', row);
+            try {
+                if (!row || row < 1) { console.error('Bad row', row); return; }
+                const url = `${API}?action=done&row=${encodeURIComponent(row)}&token=${encodeURIComponent(WRITE_TOKEN)}`;
+                const resp = await fetch(bust(url), { method: 'GET', cache: 'no-store' });
+                console.log('[DONE] HTTP status:', resp.status);
+                const text = await resp.text();
+                console.log('[DONE] body:', text);
+                console.log('markDone HTTP', resp.status, text);
+                let j; try { j = JSON.parse(text); } catch { console.error('Non-JSON from GAS'); return; }
+                if (!j.ok) { console.error('GAS error:', j.error); return; }
+                await fetchData(); // twarde odświeżenie po zapisie
+            } catch (e) { console.error('markDone exception:', e); }
+        }
+
+
+
+
+        /* ==========================================
+           STAN APLIKACJI
+           ========================================== */
+        let DATA = []; // surowe taski z API
+
+        /* ==========================================
+           FETCH DANYCH (z anty-cache + spinner na przycisku)
+           ========================================== */
+        async function fetchData() {
+            const btn = document.getElementById('refresh');
+            if (btn) { btn.disabled = true; btn.textContent = 'Refreshing…'; }
+            try {
+                const r = await fetch(bust(API), { cache: 'no-store' });
+                const j = await r.json();
+                console.log('[FETCH] raw:', j);
+                DATA = (j.tasks || [])
+                    .filter(t => t && String(t.task || '').trim() !== '')
+                    .filter(t => Number(t.freq) > 0);
+                console.log('[FETCH] tasks count:', DATA.length);
+                console.log('[FETCH] first task sample:', DATA[0]);
+                render();
+            } catch (e) {
+                console.error('Refresh failed:', e);
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Refresh'; }
+            }
+        }
+
+        // Delegacja klików z kart (stabilna po diff-renderingu)
+            document.getElementById('grid').addEventListener('click', async (ev) => {
+                const btn = ev.target.closest('button.pill');
+                if (!btn) return;
+                const row = Number(btn.dataset.row || 0);
+                if (!row) return;
+
+                // UX: zablokuj na czas zapisu
+                const prev = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = '...';
+
+                try {
+                    await markDone(row);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = prev;
+                }
+            });
+
+
+        /* ==========================================
+           KPI (liczenie metryk do kafelków)
+           ========================================== */
+        function metrics(arr) {
+            const today = arr.filter(t => !t.overdue && t.nextDueIn === 0).length;
+            const ov = arr.filter(t => t.overdue).length;
+            const total = arr.length;
+            const delays = arr
+                .filter(t => t.overdue && t.daysSince != null)
+                .map(t => (t.daysSince || 0) - (t.freq || 0));
+            const avg = delays.length ? (delays.reduce((a, b) => a + b, 0) / delays.length) : 0;
+            return { today, ov, total, avg: Math.max(0, Math.round(avg * 10) / 10) };
+        }
+
+        /* ==========================================
+           KLASYFIKACJA STATUSU I WYGLĄDU
+           ========================================== */
+        const daysOver = t => t.overdue ? Math.max(0, (t.daysSince || 0) - (t.freq || 0)) : 0;
+        const isDue = t => !t.overdue && t.nextDueIn === 0;
+        const isDead = t => t.overdue && daysOver(t) > 7;
+
+        const usedFrac = t => (t.daysSince != null && t.freq > 0)
+            ? (t.daysSince / t.freq)
+            : (t.overdue ? 1.01 : 0);
+
+        const pctOf = t => Math.min(100, Math.max(0, Math.round(usedFrac(t) * 100)));
+
+        /* kolor paska postępu */
+        const colorOf = t => {
+            if (isDead(t)) return 'dead';
+            if (t.overdue) return 'red';
+            if (isDue(t)) return 'yellow';
+            if (usedFrac(t) >= 0.8) return 'lime'; // COMING
+            return 'green'; // FRESH
+        };
+
+        /* klucz karty do diff-renderingu */
+        const keyOf = t => [t.room || '', t.category || '', t.task || ''].join('|');
+
+        /* ==========================================
+           SZABLON KARTY (HTML string)
+           ========================================== */
+        function cardHTML(t) {
+            const id = (t.row ?? t.row_id ?? null);
+            console.log('[CARD] task:', t.task, 'row/id:', id, 'last:', t.lastDone, 'freq:', t.freq);
+            const pct = pctOf(t);
+            const color = colorOf(t);
+            const over = t.overdue;
+            const dead = isDead(t);
+            const due = isDue(t);
+            const coming = !over && !due && usedFrac(t) >= 0.8;
+
+            const frameClass = dead ? 'dead'
+                : (over ? 'overdue'
+                    : (due ? 'due'
+                        : (coming ? 'coming' : '')));
+
+            const dueLabel = over
+                ? `OVERDUE by ${(t.daysSince || 0) - (t.freq || 0)}d`
+                : (due ? 'DUE today' : `Next in ${t.nextDueIn}d`);
+
+            return `
+  <div class="card ${frameClass}" data-key="${keyOf(t)}">
+    <div class="header">
+      <div style="flex:1">
+        <div class="title">
+          <span class="ico">${iconFor(t.category)}</span>
+          <span>${t.task}</span>
+        </div>
+        <div class="meta">
+          ${t.room || ''} • every ${t.freq || '?'}d
+          ${t.lastDone ? `• last: ${fmtDate(t.lastDone)}` : ''}
+          • row ${id ?? '—'}
+        </div>
+      </div>
+      <div class="badges">
+        ${dead ? `<button class="pill pill-dead"  data-row="${id}" data-action="done">DEAD</button>` : ''}
+        ${(!dead && over) ? `<button class="pill pill-over" data-row="${id}" data-action="done">OVERDUE</button>` : ''}
+        ${(!dead && !over && due) ? `<button class="pill pill-due"  data-row="${id}" data-action="done">DUE</button>` : ''}
+        ${(!dead && !over && !due && coming) ? `<button class="pill pill-coming" data-row="${id}" data-action="done">COMING</button>` : ''}
+        ${(!dead && !over && !due && !coming) ? `<button class="pill pill-fresh"  data-row="${id}" data-action="done">FRESH</button>` : ''}
+      </div>
+    </div>
+    <div class="progress"><div class="${color}" style="width:${pct}%"></div></div>
+    <div class="footer">
+      <span>${dueLabel}</span>
+      <span>${t.daysSince != null ? `Since: ${t.daysSince}d` : 'Never'}</span>
+    </div>
+  </div>`;
+
+        }
+
+        /* ==========================================
+           RENDER GŁÓWNY (diff-render z animacjami)
+           ========================================== */
+        function render() {
+            console.log('[RENDER] start, items:', DATA.length);
+            // 1) KPI
+            const m = metrics(DATA);
+            document.getElementById('kpi-today').textContent = m.today;
+            document.getElementById('kpi-overdue').textContent = m.ov;
+            document.getElementById('kpi-total').textContent = m.total;
+            document.getElementById('kpi-delay').textContent = `${m.avg}d`;
+
+            // 2) Jednorazowe wypełnienie selektorów (room + category)
+            const roomSel = document.getElementById('room');
+            if (roomSel.options.length === 1) {
+                [...new Set(DATA.map(t => t.room).filter(Boolean))].sort()
+                    .forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = r; roomSel.appendChild(o); });
+            }
+            const catSel = document.getElementById('category');
+            if (catSel && catSel.options.length === 1) {
+                [...new Set(DATA.map(t => t.category).filter(Boolean))].sort()
+                    .forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
+            }
+
+            // 3) Zastosuj filtry
+            const dueOnly = document.getElementById('dueOnly')?.checked ?? false;
+            const room = roomSel.value;
+            const category = catSel ? catSel.value : 'ALL';
+            const sort = document.getElementById('sort').value;
+
+            let list = DATA.slice();
+            if (room !== 'ALL') list = list.filter(t => t.room === room);
+            if (category !== 'ALL') list = list.filter(t => t.category === category);
+            if (dueOnly) list = list.filter(t => t.overdue || t.nextDueIn === 0);
+
+            // 4) Sortowanie
+            const safeNext = x => (Number.isFinite(x) ? x : 9999);
+            list.sort((a, b) => {
+                if (sort === 'room') return (a.room || '').localeCompare(b.room || '');
+                if (sort === 'soonest') return safeNext(a.nextDueIn) - safeNext(b.nextDueIn);
+                // default priority: najpierw overdue, potem najbliższe
+                return Number(b.overdue) - Number(a.overdue) || safeNext(a.nextDueIn) - safeNext(b.nextDueIn);
+            });
+
+            // 5) Diff-render do #grid (płynne aktualizacje)
+            const grid = document.getElementById('grid');
+            const existing = new Map([...grid.children].map(el => [el.getAttribute('data-key'), el]));
+            const nextKeys = new Set();
+
+            // dodaj/aktualizuj karty
+            for (const t of list) {
+                const k = keyOf(t);
+                nextKeys.add(k);
+                const html = cardHTML(t);
+
+                if (existing.has(k)) {
+                    // aktualizacja istniejącej karty (tylko zmieniające się fragmenty)
+                    const el = existing.get(k);
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = html.trim();
+                    const newEl = tmp.firstElementChild;
+
+                    // progress: płynnie zmień szerokość i kolor
+                    const oldBar = el.querySelector('.progress > div');
+                    const newBar = newEl.querySelector('.progress > div');
+                    if (oldBar && newBar) {
+                        const newWidth = newBar.style.width;
+                        const newClass = newBar.className;
+                        oldBar.className = newClass;
+                        requestAnimationFrame(() => { oldBar.style.width = newWidth; });
+                    }
+
+                    // badges / tytuł / meta
+                    el.querySelector('.badges').innerHTML = newEl.querySelector('.badges').innerHTML;
+                    el.querySelector('.title').innerHTML = newEl.querySelector('.title').innerHTML;
+                    el.querySelector('.meta').innerHTML = newEl.querySelector('.meta').innerHTML;
+
+                    // ramka wg statusu
+                    el.className = `card ${isDead(t) ? 'dead'
+                            : (t.overdue ? 'overdue'
+                                : (isDue(t) ? 'due'
+                                    : (usedFrac(t) >= 0.8 ? 'coming' : '')))
+                        }`;
+
+                    // flash
+                    el.classList.add('update');
+                    setTimeout(() => el.classList.remove('update'), 300);
+                } else {
+                    // nowa karta
+                    const tmp = document.createElement('div'); tmp.innerHTML = html.trim();
+                    const el = tmp.firstElementChild;
+                    el.classList.add('enter');
+                    grid.appendChild(el);
+                    requestAnimationFrame(() => el.classList.remove('enter'));
+                }
+            }
+
+            // usuń karty, których nie ma w nowej liście
+            for (const [k, el] of existing.entries()) {
+                if (!nextKeys.has(k)) {
+                    el.classList.add('leaving');
+                    el.addEventListener('transitionend', () => el.remove(), { once: true });
+                    setTimeout(() => el.remove(), 400);
+                }
+            }
+        }
+
+        /* ==========================================
+           ZDARZENIA UI + START
+           ========================================== */
+        document.getElementById('refresh').addEventListener('click', fetchData);
+        document.getElementById('dueOnly').onchange = render;
+        document.getElementById('room').onchange = render;
+        document.getElementById('sort').onchange = render;
+        document.getElementById('category').onchange = render;
+
+        // init
+        fetchData();
+    </script>
+</body>
+
+</html>
